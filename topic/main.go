@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"sync"
 
 	"golang.org/x/net/context"
 
@@ -19,10 +20,19 @@ func main() {
 
 	topic := "mytopic"
 	msg := "Hello Cloud Pub/Sub"
-	err = publish(ctx, client, topic, msg)
-	if err != nil {
-		log.Fatalf("Failed Publish. topic = %s, message = %s : %v", topic, msg, err)
+
+	wg := &sync.WaitGroup{} // WaitGroupの値を作る
+	for i := 0; i < 16; i++ {
+		wg.Add(1) // wgをインクリメント
+		go func() {
+			defer wg.Done()
+			err = publish(ctx, client, topic, msg)
+			if err != nil {
+				log.Fatalf("Failed Publish. topic = %s, message = %s : %v", topic, msg, err)
+			}
+		}()
 	}
+	wg.Wait()
 }
 
 func publish(ctx context.Context, client *pubsub.Client, topic, msg string) error {
